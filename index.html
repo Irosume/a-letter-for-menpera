@@ -661,7 +661,7 @@
     </div>
 
     <script>
-      // 1. ASSET TARGET DECLARATION (For pre-caching performance engines)
+      // 1. ASSET TARGET DECLARATION (Explicit preload mapping)
       const assetsToPreload = [
         "asset/image/background.jpg",
         "asset/image/background_collage.jpg",
@@ -680,13 +680,13 @@
       let appReadyToStart = false;
       let isTransitioning = false; 
       
-      // 2. CONFIGURATION ENGINE (Recover local configuration settings)
+      // 2. CONFIGURATION ENGINE (Recover local audio state)
       const storedVolume = localStorage.getItem("app_user_volume");
       let lastActiveVolume = storedVolume !== null ? parseFloat(storedVolume) : 0.3;
       if (lastActiveVolume === 0) lastActiveVolume = 0.3;
 
-      const DOMImages = Array.from(document.querySelectorAll("img:not(#lightbox-img)"));
-      const totalAssets = assetsToPreload.length + DOMImages.length;
+      // Track strictly against the asset array count to lock down accurate loading conditions
+      const totalAssets = assetsToPreload.length;
 
       document.getElementById("volume-slider").value = storedVolume !== null ? storedVolume : "0.3";
 
@@ -714,7 +714,7 @@
         }
       }
 
-      // Preload image files into the background layout system cache
+      // Preload image files straight into memory cache
       assetsToPreload.forEach((src) => {
         const img = new Image();
         img.src = src;
@@ -725,16 +725,10 @@
             checkAllAssetsLoaded();
           }
         };
-        img.onerror = checkAllAssetsLoaded;
-      });
-
-      DOMImages.forEach((img) => {
-        if (img.complete) {
-          checkAllAssetsLoaded();
-        } else {
-          img.onload = checkAllAssetsLoaded;
-          img.onerror = checkAllAssetsLoaded;
-        }
+        img.onerror = () => {
+          console.error("Failed to load asset path:", src);
+          checkAllAssetsLoaded(); // Safety iteration fallback step
+        };
       });
 
       // 3. AUDIO PRELOAD BALANCER
@@ -744,8 +738,13 @@
       if (music.readyState < 1) music.addEventListener("loadedmetadata", () => {}, { once: true });
       if (rustle.readyState < 1) rustle.addEventListener("loadedmetadata", () => {}, { once: true });
 
-      // Failover emergency bypass (3.5s limit ensures execution if asset servers run into a lag spike)
-      setTimeout(() => { showInteractionHint(); }, 3500);
+      // Generous 15-second network lag protection barrier
+      setTimeout(() => { 
+        if (!appReadyToStart) {
+          console.warn("Preloader threshold reached. Forcing view accessibility layer.");
+          showInteractionHint(); 
+        }
+      }, 15000);
 
       function playRustle() {
         rustle.currentTime = 0;
@@ -837,12 +836,9 @@
 
       // 5. INTERACTIVE COLLAGE & LIGHTBOX UTILITIES
       function handleCollageItemClick(element) {
-        // First click: Remove blur overlay to reveal the underlying memory
         if (!element.classList.contains("revealed")) {
           element.classList.add("revealed");
-        } 
-        // Subsequent clicks: Trigger the full-screen cinematic presentation modal
-        else {
+        } else {
           const imgSrc = element.querySelector("img").getAttribute("src");
           openImageLightbox(imgSrc);
         }
@@ -863,7 +859,6 @@
         modal.classList.remove("active");
         document.body.classList.remove("lightbox-open");
         
-        // Clear src after fade-out transition completes to prevent canvas flashing bugs next launch
         setTimeout(() => {
           if(!modal.classList.contains("active")) {
             document.getElementById("lightbox-img").src = "";
@@ -871,7 +866,6 @@
         }, 400);
       }
 
-      // Keyboard escape fallback pipeline
       document.addEventListener("keydown", function(e) {
         if (e.key === "Escape") closeImageLightbox();
       });
@@ -916,21 +910,20 @@
             collage.style.display = "block";
             document.body.classList.add("fade-bg");
             
-            collage.offsetHeight; // Forces structural redesign engine refresh
+            collage.offsetHeight; 
             collage.classList.add("show");
           }, 100);
 
           setTimeout(() => {
             flash.classList.remove("active");
-            isTransitioning = false;
-          }, 1000);
-
-          setTimeout(() => {
+            
             collage.scrollIntoView({ 
               behavior: "smooth", 
               block: "start" 
             });
-          }, 1500)
+
+            isTransitioning = false;
+          }, 900);
         }
       }
     </script>
