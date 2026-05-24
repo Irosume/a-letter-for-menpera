@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Surat Kelulusan - Kelas 2026</title>
+    <style>
+      /* ==========================================================================
+         SECTION 1: GLOBAL STYLES & TYPOGRAPHY
+         ========================================================================== */
+      @font-face {
+        font-family: "Runethia";
+        src: url("asset/font/Runethia.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      body {
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        text-align: center;
+        overflow-x: hidden;
+        overflow-y: hidden;
+        position: relative;
+        background-color: #121212;
+      }
+
+      /* Triggered by JS when the envelope sequence ends to unlock scrolling */
+      body[data-page-state="expanded"] {
+        overflow-y: auto !important;
+        justify-content: flex-start;
+        padding-top: 16.5vh;
+      }
+
+      /* Prevents double-scrolling bugs when the lightbox modal is active */
+      body.lightbox-open {
+        overflow: hidden !important;
+      }
+
+      /* ==========================================================================
+         SECTION 2: BACKGROUND LAYERS (CINEMATIC FADES)
+         ========================================================================== */
+      /* Base background image (blurred) */
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: linear-gradient(
+            rgba(0, 0, 0, 0.4),
+            rgba(0, 0, 0, 0.4)
+          ),
+          url("asset/image/background.jpg");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        filter: blur(8px);
+        transform: scale(1.05);
+        z-index: -2;
+        transition: opacity 1s ease-in-out;
+      }
+
+      /* Collage Phase Background (placed behind, reveals when body.fade-bg is active) */
+      body::after {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: linear-gradient(
+            rgba(0, 0, 0, 0.5),
+            rgba(0, 0, 0, 0.5)
+          ),
+          url("asset/image/background_collage.jpg");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        filter: blur(6px);
+        transform: scale(1.05);
+        z-index: -3;
+      }
+
+      body.fade-bg::before {
+        opacity: 0;
+      }
+
+      /* ==========================================================================
+         SECTION 3: LOADING SCREEN & USER INTERACTION INTERCEPTOR
+         ========================================================================== */
+      #overlay-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #121212;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        transition:
+          opacity 0.6s ease,
+          visibility 0.6s;
+      }
+
+      #loader-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        opacity: 1;
+        transition: opacity 0.4s ease;
+      }
+
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(255, 255, 255, 0.1);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      #interaction-hint {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+      }
+
+      .hint-icon {
+        width: 64px;
+        height: 64px;
+        animation: pulseGesture 2s infinite ease-in-out;
+      }
+
+      .hint-text {
+        font-size: 1.4rem;
+        color: rgba(255, 255, 255, 0.9);
+        letter-spacing: 1px;
+      }
+
+      @keyframes pulseGesture {
+        0%, 100% { transform: scale(1); opacity: 0.6; }
+        50% { transform: scale(1.15); opacity: 1; }
+      }
+
+      /* ==========================================================================
+         SECTION 4: ENVELOPE INTERACTIVE CONTAINER
+         ========================================================================== */
+      #envelope-container {
+        position: relative;
+        width: 90vw;
+        max-width: 600px;
+        height: 90vw;
+        max-height: 600px;
+        cursor: pointer;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0);
+        overflow: visible;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.8s ease;
+        flex-shrink: 0;
+        margin-bottom: 50px;
+      }
+
+      .envelope-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transition: all 0.5s ease-in-out;
+      }
+
+      /* --- ENVELOPE STATES MATRIX --- */
+      #layer-sealed { z-index: 30; opacity: 1; transform: scale(1); visibility: visible; }
+      #layer-opened { z-index: 20; opacity: 0; transform: scale(0.95); visibility: hidden; }
+      #layer-full-card { z-index: 10; opacity: 0; transform: translateY(40px); visibility: hidden; transition: all 0.5s ease-in-out; }
+      #layer-card-two { z-index: 5; opacity: 0; transform: translateY(40px); visibility: hidden; transition: all 0.5s ease-in-out; }
+
+      /* Stage 1: Opened */
+      [data-stage="opened"] #layer-sealed { opacity: 0; transform: scale(1.05); visibility: hidden; }
+      [data-stage="opened"] #layer-opened { opacity: 1; transform: scale(1); visibility: visible; }
+
+      /* Stage 2: First Card Revealed */
+      [data-stage="revealed"] #layer-opened { opacity: 1; visibility: visible; z-index: 20; }
+      [data-stage="revealed"] #layer-sealed { opacity: 0; visibility: hidden; }
+      [data-stage="revealed"] #layer-full-card { z-index: 40; opacity: 1; transform: translateY(0); visibility: visible; }
+
+      /* Stage 3: Second Card Revealed */
+      [data-stage="revealed-two"] #layer-sealed { opacity: 0; visibility: hidden; }
+      [data-stage="revealed-two"] #layer-opened { opacity: 1; visibility: visible; z-index: 20; }
+      [data-stage="revealed-two"] #layer-full-card { opacity: 0; transform: translateY(-50px); visibility: hidden; }
+      [data-stage="revealed-two"] #layer-card-two { z-index: 45; opacity: 1; transform: translateY(0); visibility: visible; }
+
+      /* Stage 4: Final Expansion Layout Setup */
+      [data-stage="expanded"] #layer-sealed { opacity: 0; visibility: hidden; }
+      [data-stage="expanded"] #layer-opened { opacity: 1; visibility: visible; z-index: 20; }
+      [data-stage="expanded"] #layer-full-card { opacity: 0; visibility: hidden; }
+      [data-stage="expanded"] #layer-card-two { z-index: 45; opacity: 1; transform: translateY(0); visibility: visible; }
+
+      /* ==========================================================================
+         SECTION 5: IMAGE COLLAGE SYSTEM
+         ========================================================================== */
+      .collage-container {
+        width: 85%;
+        max-width: 500px;
+        margin: 40px auto 80px auto;
+        padding: 15px;
+        display: none;
+        opacity: 0;
+        transform: translateY(40px);
+        transition: opacity 1.2s ease, transform 1.2s ease;
+      }
+
+      [data-stage="expanded"] + .collage-container {
+        display: block;
+      }
+
+      .collage-container h2 {
+        margin-bottom: 25px;
+        font-size: 1.3rem;
+        color: #fff;
+        letter-spacing: 1px;
+        line-height: 1.3;
+        font-family: "Runethia", sans-serif;
+      }
+
+      .image-collage {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        width: 100%;
+      }
+
+      .collage-item {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        border-radius: 4px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      }
+
+      .collage-item img {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        object-fit: contain;
+        display: block;
+        transition: transform 0.4s ease;
+      }
+
+      /* Adds a subtle zoom-in indicator hint once revealed */
+      .collage-item.revealed img {
+        cursor: zoom-in;
+      }
+      .collage-item.revealed:hover img {
+        transform: scale(1.03);
+      }
+
+      .reveal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(30, 30, 30, 0.65);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 5;
+        transition: opacity 0.6s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.6s step-end;
+        padding: 10px;
+      }
+
+      .reveal-text {
+        font-family: "Runethia", sans-serif;
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.15rem;
+        letter-spacing: 1px;
+        text-align: center;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+        pointer-events: none;
+        user-select: none;
+        transition: transform 0.3s ease;
+      }
+
+      .collage-item:hover .reveal-text { transform: scale(1.05); }
+      .collage-item.revealed .reveal-overlay { opacity: 0; visibility: hidden; transition: opacity 0.6s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.6s step-forward; }
+      .collage-container.show { opacity: 1; transform: translateY(0); }
+
+      /* ==========================================================================
+         SECTION 5.5: LIGHTBOX MODAL CONTAINER UI
+         ========================================================================== */
+      #lightbox-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(10, 10, 10, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        z-index: 300;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.4s;
+      }
+
+      #lightbox-modal.active {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .lightbox-wrapper {
+        position: relative;
+        max-width: 90vw;
+        max-height: 85vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transform: scale(0.92);
+        transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+      }
+
+      #lightbox-modal.active .lightbox-wrapper {
+        transform: scale(1);
+      }
+
+      #lightbox-img {
+        max-width: 100%;
+        max-height: 85vh;
+        object-fit: contain;
+        border-radius: 6px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+
+      #lightbox-close-btn {
+        position: absolute;
+        top: -45px;
+        right: 0;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.2s;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      #lightbox-close-btn:hover {
+        background-color: rgba(255, 255, 255, 0.25);
+        transform: scale(1.05);
+      }
+
+      /* ==========================================================================
+         SECTION 6: CINEMATIC FLASH LAYER
+         ========================================================================== */
+      #white-flash {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #fff;
+        z-index: 200;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1), visibility 0s linear 0.8s;
+      }
+
+      #white-flash.active {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transition: opacity 0.1s ease-out, visibility 0s linear 0s;
+      }
+
+      /* ==========================================================================
+         SECTION 7: HORIZONTAL MEDIA DRAWER WIDGET
+         ========================================================================== */
+      #volume-widget {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(18, 18, 18, 0.75);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 30px;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        z-index: 90;
+        visibility: hidden;
+        opacity: 0;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        padding: 6px;
+        overflow: hidden;
+        width: 44px;
+        height: 44px;
+        transition: 
+          opacity 0.6s ease, 
+          visibility 0.6s ease, 
+          background-color 0.2s ease,
+          width 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+          height 0.3s ease;
+      }
+
+      #volume-widget.expanded {
+        width: 320px;
+        height: auto;
+        padding: 12px 10px;
+        background: rgba(18, 18, 18, 0.92);
+      }
+
+      #volume-toggle-btn {
+        background: rgba(255, 255, 255, 0.08);
+        border: none;
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        transition: transform 0.2s, background-color 0.2s;
+        padding: 0;
+      }
+
+      #volume-toggle-btn:hover { background-color: rgba(255, 255, 255, 0.15); transform: scale(1.05); }
+      .rotate-disc { animation: spinDisc 4s linear infinite; }
+      @keyframes spinDisc { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+      #player-drawer-content {
+        display: none;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: flex-start;
+        width: calc(100% - 32px);
+        padding: 0 12px 0 6px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        overflow: hidden;
+        gap: 6px;
+      }
+
+      #volume-widget.expanded #player-drawer-content { display: flex; opacity: 1; transition-delay: 0.15s; }
+      .music-title-container { overflow: hidden; width: 100%; max-width: 210px; display: flex; justify-content: flex-start; }
+      
+      .music-title {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.95);
+        white-space: nowrap;
+        display: inline-block;
+        animation: bounceMarquee 7s ease-in-out infinite alternate;
+        padding-right: 2px;
+      }
+
+      @keyframes bounceMarquee {
+        0%, 15% { transform: translate3d(0, 0, 0); }
+        85%, 100% { transform: translate3d(calc(-100% + 210px), 0, 0); }
+      }
+
+      .player-controls-row { display: flex; align-items: center; gap: 8px; width: 100%; height: 16px; }
+      #volume-mute-btn { background: none; border: none; color: rgba(255, 255, 255, 0.6); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color 0.2s; padding: 0; }
+      #volume-mute-btn:hover { color: #fff; }
+      #volume-slider-container { display: flex; align-items: center; flex-grow: 1; }
+      
+      #volume-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 2px;
+        outline: none;
+        cursor: pointer;
+        transition: background 0.2s;
+        width: 100%;
+        height: 4px;
+        display: block;
+      }
+
+      #volume-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #ffffff; cursor: pointer; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); transition: transform 0.15s; }
+      #volume-slider::-webkit-slider-thumb:hover { transform: scale(1.3); }
+      #volume-slider::-moz-range-thumb { width: 10px; height: 10px; border: none; border-radius: 50%; background: #ffffff; cursor: pointer; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); transition: transform 0.15s; }
+
+      /* ==========================================================================
+         SECTION 8: RESPONSIVE MEDIA BREAKPOINTS (SCALING)
+         ========================================================================== */
+      /* --- Desktop Layout Grid System --- */
+      @media (min-width: 768px) {
+        .collage-container { width: 95%; max-width: 1200px; margin: 60px auto 100px auto; }
+        .collage-container h2 { margin-bottom: 40px; font-size: 2.8rem; letter-spacing: 2px; }
+        .image-collage { grid-template-columns: repeat(3, 1fr); grid-template-rows: auto auto auto; gap: 30px; align-items: center; }
+        
+        .landscape-left { grid-column: 1; grid-row: 1; }
+        .landscape-right { grid-column: 3; grid-row: 1; }
+        .portrait-left { grid-column: 1; grid-row: 2; }
+        .portrait-right { grid-column: 3; grid-row: 2; }
+        .tall-center { grid-column: 2; grid-row: 2 / span 2; }
+
+        .reveal-text { font-size: 1.8rem; letter-spacing: 1.5px; }
+        #volume-widget { bottom: 25px; right: 25px; padding: 8px; width: 52px; height: 52px; border-radius: 35px; }
+        #volume-widget.expanded { width: 360px; height: auto; padding: 14px 12px; }
+        #volume-toggle-btn { width: 36px; height: 36px; }
+        #player-drawer-content { width: calc(100% - 36px); padding: 0 14px 0 8px; gap: 8px; }
+        .music-title-container { max-width: 280px; }
+        .music-title { font-size: 0.9rem; }
+        @keyframes bounceMarquee { 0%, 15% { transform: translate3d(0, 0, 0); } 85%, 100% { transform: translate3d(calc(-100% + 280px), 0, 0); } }
+        
+        /* Relocate close button inside the top-right corner wrapper area on desktops */
+        #lightbox-close-btn { top: 15px; right: 20px; width: 42px; height: 42px; background: rgba(10, 10, 10, 0.4); }
+      }
+
+      /* --- Mobile Compact Fixes --- */
+      @media (max-width: 480px) {
+        #interaction-hint .hint-icon { width: 48px; height: 48px; }
+        #interaction-hint .hint-text { font-size: 1.05rem; letter-spacing: 0.5px; }
+        #volume-widget { bottom: 16px; right: 16px; padding: 5px; width: 38px; height: 38px; }
+        #volume-widget.expanded { width: 270px; height: auto; padding: 10px 8px; }
+        #volume-toggle-btn { width: 28px; height: 28px; }
+        #player-drawer-content { width: calc(100% - 28px); padding: 0 8px 0 4px; gap: 6px; }
+        .music-title-container { max-width: 190px; }
+        .music-title { font-size: 0.72rem; }
+        @keyframes bounceMarquee { 0%, 15% { transform: translate3d(0, 0, 0); } 85%, 100% { transform: translate3d(calc(-100% + 190px), 0, 0); } }
+        .reveal-text { font-size: 1.05rem; letter-spacing: 0.5px; }
+        
+        /* Better close button location positioning setup on small screens */
+        #lightbox-close-btn { top: -50px; right: 50%; transform: translateX(50%); }
+        #lightbox-modal.active .lightbox-wrapper { transform: scale(1) translateY(15px); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="white-flash"></div>
+
+    <div id="overlay-screen" onclick="dismissInstructionPage()">
+      <div id="loader-content">
+        <div class="spinner"></div>
+        <p>Memuat...</p>
+      </div>
+
+      <div id="interaction-hint">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mouse-pointer-click hint-icon"><path d="M14 4.1 12 6" /><path d="m5.1 8-2.9-.8" /><path d="m6 12-1.9 2" /><path d="M7.2 2.2 8 5.1" /><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z" /></svg>
+        <span class="hint-text">Klik di mana saja untuk memulai.</span>
+      </div>
+    </div>
+
+    <div id="volume-widget">
+      <button id="volume-toggle-btn" onclick="togglePlayerDrawer()" title="Music Player">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-music"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+      </button>
+
+      <div id="player-drawer-content">
+        <div class="music-title-container">
+          <div class="music-title">Voor Dilan &mdash; Dulu Kita Masih Remaja (2018 Remaster)</div>
+        </div>
+        
+        <div class="player-controls-row">
+          <button id="volume-mute-btn" onclick="toggleMuteState()" title="Mute/Unmute">
+            <svg id="icon-vol-on" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            <svg id="icon-vol-muted" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="22" y1="9" x2="16" y2="15"></line></svg>
+          </button>
+          
+          <div id="volume-slider-container">
+            <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="0.3" oninput="adjustVolumeLevel(this.value)" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <audio id="bg-music" loop preload="auto">
+      <source src="asset/music/music.mp3" type="audio/mpeg" />
+    </audio>
+
+    <audio id="rustle-sound" preload="auto">
+      <source src="asset/music/paper_rustle.mp3" type="audio/mpeg" />
+    </audio>
+
+    <div id="envelope-container" data-stage="sealed" onclick="advanceEnvelopeStage()">
+      <img id="layer-card-two" class="envelope-layer" src="asset/image/image_4.png" alt="Second Letter Content" />
+      <img id="layer-full-card" class="envelope-layer" src="asset/image/image_3.png" alt="First Letter Content" />
+      <img id="layer-opened" class="envelope-layer" src="asset/image/image_2.png" alt="Envelope Open" />
+      <img id="layer-sealed" class="envelope-layer" src="asset/image/image_1.png" alt="Envelope Closed" />
+    </div>
+
+    <div class="collage-container">
+      <h2>Momen Kebersamaan Kita</h2>
+      <div class="image-collage">
+        <div class="collage-item landscape-left" onclick="handleCollageItemClick(this)">
+          <div class="reveal-overlay"><div class="reveal-text">Klik untuk melihat</div></div>
+          <img src="asset/image/16_9a.png" alt="Memory 1" />
+        </div>
+        <div class="collage-item landscape-right" onclick="handleCollageItemClick(this)">
+          <div class="reveal-overlay"><div class="reveal-text">Klik untuk melihat</div></div>
+          <img src="asset/image/16_9b.png" alt="Memory 2" />
+        </div>
+        <div class="collage-item portrait-left" onclick="handleCollageItemClick(this)">
+          <div class="reveal-overlay"><div class="reveal-text">Klik untuk melihat</div></div>
+          <img src="asset/image/4_5a.png" alt="Memory 3" />
+        </div>
+        <div class="collage-item portrait-right" onclick="handleCollageItemClick(this)">
+          <div class="reveal-overlay"><div class="reveal-text">Klik untuk melihat</div></div>
+          <img src="asset/image/4_5b.png" alt="Memory 4" />
+        </div>
+        <div class="collage-item tall-center" onclick="handleCollageItemClick(this)">
+          <div class="reveal-overlay"><div class="reveal-text">Klik untuk melihat</div></div>
+          <img src="asset/image/9_16.png" alt="Memory 5" />
+        </div>
+      </div>
+    </div>
+
+    <div id="lightbox-modal" onclick="closeImageLightbox()">
+      <div class="lightbox-wrapper" onclick="event.stopPropagation()">
+        <button id="lightbox-close-btn" onclick="closeImageLightbox()" title="Close Image">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        <img id="lightbox-img" src="" alt="Enlarged view" />
+      </div>
+    </div>
+
+    <script>
+      // 1. ASSET TARGET DECLARATION (For pre-caching performance engines)
+      const assetsToPreload = [
+        "asset/image/background.jpg",
+        "asset/image/background_collage.jpg",
+        "asset/image/image_1.png",
+        "asset/image/image_2.png",
+        "asset/image/image_3.png",
+        "asset/image/image_4.png",
+        "asset/image/9_16.png",
+        "asset/image/4_5a.png",
+        "asset/image/16_9a.png",
+        "asset/image/4_5b.png",
+        "asset/image/16_9b.png",
+      ];
+
+      let loadedCount = 0;
+      let appReadyToStart = false;
+      let isTransitioning = false; 
+      
+      // 2. CONFIGURATION ENGINE (Recover local configuration settings)
+      const storedVolume = localStorage.getItem("app_user_volume");
+      let lastActiveVolume = storedVolume !== null ? parseFloat(storedVolume) : 0.3;
+      if (lastActiveVolume === 0) lastActiveVolume = 0.3;
+
+      const DOMImages = Array.from(document.querySelectorAll("img:not(#lightbox-img)"));
+      const totalAssets = assetsToPreload.length + DOMImages.length;
+
+      document.getElementById("volume-slider").value = storedVolume !== null ? storedVolume : "0.3";
+
+      // Unlocks entry hint screen view smoothly
+      function showInteractionHint() {
+        if (appReadyToStart) return; 
+        appReadyToStart = true;
+        
+        const loaderContent = document.getElementById("loader-content");
+        const hint = document.getElementById("interaction-hint");
+
+        loaderContent.style.opacity = "0";
+        setTimeout(() => {
+          loaderContent.style.display = "none";
+          hint.style.display = "flex";
+          hint.offsetHeight; // Forces engine repaint
+          hint.style.opacity = "1";
+        }, 400);
+      }
+
+      function checkAllAssetsLoaded() {
+        loadedCount++;
+        if (loadedCount >= totalAssets) {
+          showInteractionHint();
+        }
+      }
+
+      // Preload image files into the background layout system cache
+      assetsToPreload.forEach((src) => {
+        const img = new Image();
+        img.src = src;
+        img.onload = () => {
+          if (typeof img.decode === "function") {
+            img.decode().then(checkAllAssetsLoaded).catch(() => checkAllAssetsLoaded());
+          } else {
+            checkAllAssetsLoaded();
+          }
+        };
+        img.onerror = checkAllAssetsLoaded;
+      });
+
+      DOMImages.forEach((img) => {
+        if (img.complete) {
+          checkAllAssetsLoaded();
+        } else {
+          img.onload = checkAllAssetsLoaded;
+          img.onerror = checkAllAssetsLoaded;
+        }
+      });
+
+      // 3. AUDIO PRELOAD BALANCER
+      const music = document.getElementById("bg-music");
+      const rustle = document.getElementById("rustle-sound");
+
+      if (music.readyState < 1) music.addEventListener("loadedmetadata", () => {}, { once: true });
+      if (rustle.readyState < 1) rustle.addEventListener("loadedmetadata", () => {}, { once: true });
+
+      // Failover emergency bypass (3.5s limit ensures execution if asset servers run into a lag spike)
+      setTimeout(() => { showInteractionHint(); }, 3500);
+
+      function playRustle() {
+        rustle.currentTime = 0;
+        rustle.volume = 0.6;
+        rustle.play().catch((err) => console.log("Audio skipped:", err));
+      }
+
+      // Dismiss entrance screen overlay and play backing music
+      function dismissInstructionPage() {
+        if (!appReadyToStart) return;
+
+        const overlay = document.getElementById("overlay-screen");
+        const container = document.getElementById("envelope-container");
+        const volWidget = document.getElementById("volume-widget");
+        const toggleBtn = document.getElementById("volume-toggle-btn");
+
+        const currentSliderVal = parseFloat(document.getElementById("volume-slider").value);
+        music.volume = currentSliderVal;
+        
+        music.play().then(() => {
+          if (currentSliderVal > 0) toggleBtn.classList.add("rotate-disc");
+        }).catch((err) => console.log("Audio playback error:", err));
+
+        const iconOn = document.getElementById("icon-vol-on");
+        const iconMuted = document.getElementById("icon-vol-muted");
+        if (currentSliderVal === 0) {
+          iconOn.style.display = "none";
+          iconMuted.style.display = "block";
+        }
+
+        overlay.style.opacity = "0";
+        overlay.style.visibility = "hidden";
+
+        container.style.visibility = "visible";
+        volWidget.style.visibility = "visible";
+        setTimeout(() => {
+          container.style.opacity = "1";
+          volWidget.style.opacity = "1";
+        }, 50);
+
+        setTimeout(() => overlay.remove(), 600);
+      }
+
+      // 4. MUSIC DRAWER UTILITIES
+      function togglePlayerDrawer() {
+        const widget = document.getElementById("volume-widget");
+        widget.classList.toggle("expanded");
+      }
+
+      function adjustVolumeLevel(val) {
+        const value = parseFloat(val);
+        music.volume = value;
+        localStorage.setItem("app_user_volume", val);
+
+        const iconOn = document.getElementById("icon-vol-on");
+        const iconMuted = document.getElementById("icon-vol-muted");
+        const toggleBtn = document.getElementById("volume-toggle-btn");
+
+        if (value === 0) {
+          iconOn.style.display = "none";
+          iconMuted.style.display = "block";
+          toggleBtn.classList.remove("rotate-disc");
+        } else {
+          iconOn.style.display = "block";
+          iconMuted.style.display = "none";
+          lastActiveVolume = value;
+          if (!music.paused) toggleBtn.classList.add("rotate-disc");
+        }
+      }
+
+      function toggleMuteState() {
+        const slider = document.getElementById("volume-slider");
+        if (music.volume > 0) {
+          adjustVolumeLevel(0);
+          slider.value = 0;
+        } else {
+          adjustVolumeLevel(lastActiveVolume);
+          slider.value = lastActiveVolume;
+        }
+      }
+
+      // Click outside to collapse player widget
+      document.addEventListener("click", function (event) {
+        const widget = document.getElementById("volume-widget");
+        if (!widget.contains(event.target)) {
+          widget.classList.remove("expanded");
+        }
+      });
+
+      // 5. INTERACTIVE COLLAGE & LIGHTBOX UTILITIES
+      function handleCollageItemClick(element) {
+        // First click: Remove blur overlay to reveal the underlying memory
+        if (!element.classList.contains("revealed")) {
+          element.classList.add("revealed");
+        } 
+        // Subsequent clicks: Trigger the full-screen cinematic presentation modal
+        else {
+          const imgSrc = element.querySelector("img").getAttribute("src");
+          openImageLightbox(imgSrc);
+        }
+      }
+
+      function openImageLightbox(src) {
+        const modal = document.getElementById("lightbox-modal");
+        const lightboxImg = document.getElementById("lightbox-img");
+        
+        lightboxImg.src = src;
+        modal.classList.add("active");
+        document.body.classList.add("lightbox-open");
+      }
+
+      function closeImageLightbox() {
+        const modal = document.getElementById("lightbox-modal");
+        
+        modal.classList.remove("active");
+        document.body.classList.remove("lightbox-open");
+        
+        // Clear src after fade-out transition completes to prevent canvas flashing bugs next launch
+        setTimeout(() => {
+          if(!modal.classList.contains("active")) {
+            document.getElementById("lightbox-img").src = "";
+          }
+        }, 400);
+      }
+
+      // Keyboard escape fallback pipeline
+      document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") closeImageLightbox();
+      });
+
+      // 6. MAIN STATE MACHINE PIPELINE
+      function advanceEnvelopeStage() {
+        if (isTransitioning) return;
+
+        const container = document.getElementById("envelope-container");
+        const collage = document.querySelector(".collage-container");
+        const currentStage = container.getAttribute("data-stage");
+
+        if (currentStage === "sealed") {
+          isTransitioning = true;
+          playRustle();
+          container.setAttribute("data-stage", "opened");
+          setTimeout(() => { isTransitioning = false; }, 1500); 
+        } 
+        else if (currentStage === "opened") {
+          isTransitioning = true;
+          playRustle();
+          container.setAttribute("data-stage", "revealed");
+          setTimeout(() => { isTransitioning = false; }, 1500); 
+        } 
+        else if (currentStage === "revealed") {
+          isTransitioning = true;
+          playRustle();
+          container.setAttribute("data-stage", "revealed-two");
+          setTimeout(() => { isTransitioning = false; }, 1500); 
+        } 
+        else if (currentStage === "revealed-two") {
+          isTransitioning = true;
+          const flash = document.getElementById("white-flash");
+
+          flash.classList.add("active");
+          container.style.pointerEvents = "none";
+
+          setTimeout(() => {
+            container.setAttribute("data-stage", "expanded");
+            document.body.setAttribute("data-page-state", "expanded");
+            
+            collage.style.display = "block";
+            document.body.classList.add("fade-bg");
+            
+            collage.offsetHeight; // Forces structural redesign engine refresh
+            collage.classList.add("show");
+          }, 100);
+
+          setTimeout(() => {
+            flash.classList.remove("active");
+            isTransitioning = false;
+          }, 1000);
+
+          setTimeout(() => {
+            collage.scrollIntoView({ 
+              behavior: "smooth", 
+              block: "start" 
+            });
+          }, 1500)
+        }
+      }
+    </script>
+  </body>
+</html>
